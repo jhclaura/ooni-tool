@@ -1,47 +1,70 @@
-# Windows image file caches
+
+# ====================================================================== #
+# Source: https://github.com/Murkantilism/skylabgame/blob/dev/.gitignore #
+# ====================================================================== #
+
+# =============== #
+# Unity generated #
+# =============== #
+[Tt]emp/
+[Oo]bj/
+[Uu]nityGenerated/
+[Ll]ibrary/
+[Bb]uild/
+[Bb]uilds/
+[Ee]xport/
+[Mm]ockups/
+sysinfo.txt
+*.stackdump
+
+# =============== #
+# Video Renders   #
+# =============== #
+[Cc]apture/
+
+# =============== #
+# Big Asset #
+# =============== #
+# [Aa]ssets/StreamingAssets/
+ 
+# ===================================== #
+# Visual Studio / MonoDevelop generated #
+# ===================================== #
+ExportedObj/
+*.unityproj
+*.sln
+*.tmp
+*.userprefs
+*.pidb
+*.svd
+*.userprefs
+*.csproj
+*.pidb
+*.suo
+*.sln
+*.user
+*.unityproj
+*.booproj
+.vs/
+/.idea*/
+ 
+# Unity3D Generated Files on Crash Reports
+sysinfo.txt
+ 
+# ============ #
+# OS generated #
+# ============ #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
 Thumbs.db
 ehthumbs.db
+[Tt]humbs.db
+[Dd]esktop.ini
 
-# Folder config file
-Desktop.ini
+Assets/Plugins/iOS/libgvrunity.a
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk
-
-# =========================
-# Operating System Files
-# =========================
-
-# OSX
-# =========================
-
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Thumbnails
-._*
-
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
