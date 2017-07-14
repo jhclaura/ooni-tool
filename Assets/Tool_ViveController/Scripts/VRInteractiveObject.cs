@@ -18,6 +18,9 @@ public class VRInteractiveObject : MonoBehaviour {
 	public event Action<GameObject> OnUp;
 	public event Action<GameObject> OnTouch;
 	public event Action<GameObject> OnPadDown;
+	// Laser
+	public event Action OnLaserDown;
+	public event Action OnLaserUp;
 
 	public bool usePhysics = false;
 	//public GameObject scaleTarget;
@@ -37,6 +40,9 @@ public class VRInteractiveObject : MonoBehaviour {
 	private bool m_IsSpringing = false;
 	private bool m_IsHammered = false;
 	private bool m_IsDropping = false;
+	// Laser
+	private bool m_IsLasering = false;
+	private Ooni_LaserPointer currLaser;
 
 	private bool readyToDie = false;
 	private float m_tapeWidth = 0f;
@@ -73,6 +79,12 @@ public class VRInteractiveObject : MonoBehaviour {
 	{
 		get { return m_IsHammered; }
 		set { m_IsHammered = value; }
+	}
+
+	public bool IsLasering
+	{
+		get { return m_IsLasering; }
+		set { m_IsLasering = value; }
 	}
 
 	public Vector3 GrabbedPos
@@ -383,6 +395,27 @@ public class VRInteractiveObject : MonoBehaviour {
 	{
 		if (OnPadDown != null)
 			OnPadDown (touchingObj);
+	}
+
+	public void LaserDown(Ooni_LaserPointer laser)
+	{
+		if (m_IsLasering)
+			return;
+
+		m_IsLasering = true;
+		currLaser = laser;
+
+		if (OnLaserDown != null)
+			OnLaserDown (laser);
+	}
+
+	public void LaserUp(Ooni_LaserPointer laser)
+	{
+		m_IsLasering = false;
+		currLaser = null;
+
+		if (OnLaserUp != null)
+			OnLaserUp (laser);
 	}
 	#endregion
 

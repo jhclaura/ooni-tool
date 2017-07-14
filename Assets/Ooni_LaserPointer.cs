@@ -1,4 +1,4 @@
-﻿//Ref: SteamVR_LaserPointer ===============
+﻿//Reference: SteamVR_LaserPointer.cs
 using UnityEngine;
 using System.Collections;
 using System;
@@ -24,13 +24,14 @@ public class Ooni_LaserPointer : MonoBehaviour
 	public GameObject holder;
 	public GameObject pointer;
 	public bool addRigidBody = false;
-	public GameObject testDot;
+	//public GameObject testDot;
 
 	public event OoniPointerEventHandler PointerIn;
 	public event OoniPointerEventHandler PointerOut;
 	public event OoniPointerEventHandler PointerOn;
 
-	public event Action PointerOutWithTrigger;
+	public event Action PointerOutWithTrigger;	// pointerOut due to triggerUp
+
 	public event Action<Vector2> PadTouching;
 	public event Action<Vector2> PadDown;
 	public event Action<Vector2> PadUp;
@@ -39,6 +40,19 @@ public class Ooni_LaserPointer : MonoBehaviour
 	private Transform previousContact = null;
 	private SteamVR_TrackedController controller;
 	private int wallLayer;
+	private int noArtLayer;
+
+	private bool m_onToArt;
+	public bool OnToArt
+	{
+		get { return m_onToArt; }
+		set { m_onToArt = value; }
+	}
+
+	public SteamVR_Controller.Device Device
+	{
+		get { return SteamVR_Controller.Input ((int)controller.controllerIndex); }
+	}
 
 	void OnEnable()
 	{
@@ -97,6 +111,8 @@ public class Ooni_LaserPointer : MonoBehaviour
 		pointer.GetComponent<MeshRenderer>().material = pointerMaterial;
 
 		wallLayer = 1 << 8;
+		noArtLayer = 1 << 9;
+		noArtLayer = ~noArtLayer;
 
 		holder.SetActive (false);
 	}
@@ -119,7 +135,7 @@ public class Ooni_LaserPointer : MonoBehaviour
 			PointerOn(this, e);
 	}
 
-	public virtual void OnTriggerUp()
+	public virtual void OnPointerOutByTriggerUp()
 	{
 		if (PointerOutWithTrigger != null)
 			PointerOutWithTrigger();
@@ -134,7 +150,12 @@ public class Ooni_LaserPointer : MonoBehaviour
 
 		Ray raycast = new Ray(transform.position, transform.forward);
 		RaycastHit hit;
-		bool bHit = Physics.Raycast(raycast, out hit);
+		bool bHit;
+
+		if(OnToArt)
+			bHit = Physics.Raycast(raycast, out hit, dist, noArtLayer);
+		else
+			bHit = Physics.Raycast(raycast, out hit);
 
 		// Pointer Out
 		if(previousContact && previousContact != hit.transform)
@@ -178,8 +199,8 @@ public class Ooni_LaserPointer : MonoBehaviour
 			OnPointerOn(argsOn);
 
 			// update
-			if(testDot)
-				testDot.transform.position = hit.point;
+//			if(testDot)
+//				testDot.transform.position = hit.point;
 			
 			previousContact = hit.transform;
 		}
@@ -238,7 +259,7 @@ public class Ooni_LaserPointer : MonoBehaviour
 			previousContact = null;
 		}
 
-		OnTriggerUp();
+		OnPointerOutByTriggerUp();
 
 		isActive = false;
 		holder.SetActive(false);
@@ -252,5 +273,10 @@ public class Ooni_LaserPointer : MonoBehaviour
 	{
 		var device = SteamVR_Controller.Input((int)controller.controllerIndex);
 		return device.GetAxis();
+	}
+
+	public void DeviceVibrate()
+	{
+		Device.TriggerHapticPulse (1000);
 	}
 }

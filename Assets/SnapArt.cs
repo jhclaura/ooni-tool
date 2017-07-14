@@ -5,6 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(Ooni_LaserPointer))]
 public class SnapArt : MonoBehaviour
 {
+	[Tooltip("For debug display")]
 	public GameObject currArt;
 
 	private GameObject prevArt;
@@ -17,6 +18,21 @@ public class SnapArt : MonoBehaviour
 	private Vector2 pastTouchpadAxis;
 
 	private bool hittingWall = false;
+
+	// Grab n Stretch
+	private VRInteractiveObject m_CurrentInteractible;
+	private GameObject grabbedObj;
+	private GameObject stretchObj;
+	private bool grabSomething = false;
+	private bool inStretchMode = false;
+	private float initialControllersDistance;
+	private Vector3 originalScale;
+	private Vector3 m_TriggerClickPosition;
+	private Vector3 m_TriggerDownPosition;
+	private Vector3 m_TriggerUpPosition;
+	private float m_LastUpTime;
+
+	//---------------------------------------------------------
 
 	void OnEnable()
 	{
@@ -46,33 +62,102 @@ public class SnapArt : MonoBehaviour
 
 	public void OnPointerIn(object sender, OoniPointerEventArgs e)
 	{
-		if (e.targetCollider.CompareTag ("Art") && currArt==null)
-		{
-			e.targetCollider.enabled = false;
-			currArt = e.target.gameObject;
+		// prepare to grab
 
-			if(prevArt!=currArt)
-				posPercentage = 1f;
-			
-			Debug.Log ("pointer onto art");
+		// ignore if already grabbing something
+		if (grabSomething)
+			return;
+
+		// ignore if already stretching something
+		if (inStretchMode)
+			return;
+		
+		if (e.targetCollider.CompareTag ("Art"))
+		{
+			if (currArt == null)
+			{
+				GameObject c_art = e.targetCollider.gameObject;
+				m_CurrentInteractible = c_art.GetComponent<VRInteractiveObject> ();
+
+				// if already been lasering
+				if(m_CurrentInteractible.IsLasering)
+				{
+					// enter stretch mode!
+					inStretchMode = true;
+					stretchObj = c_art;
+					originalScale = stretchObj.transform.localScale;
+
+					initialControllersDistance = (e.hitPoint - e.target.position).sqrMagnitude;
+					Debug.Log ("pointer onto art & stretch!");
+				}
+				else
+				{
+					// be grabbed!
+					m_CurrentInteractible.LaserDown(laserPointer);
+
+					// Let laser shoot through Art
+					// v.1
+					// e.targetCollider.enabled = false;
+					//v.2
+					laserPointer.OnToArt = true;
+
+					currArt = e.target.gameObject;
+
+					if (prevArt != currArt)
+						posPercentage = 1f;
+
+					grabSomething = true;
+					Debug.Log ("pointer onto art & grab!");
+				}
+
+				laserPointer.DeviceVibrate ();
+			}
 		}
 	}
 
+	// Pointer On (anything)
 	public void OnPointerOn(object sender, OoniPointerEventArgs e)
 	{
-		if (!e.targetCollider.CompareTag ("Art"))
+		if (grabSomething)
 		{
-			artTargetPos = e.hitPoint;
-			artTargetRot = e.target.localRotation;
-			hittingWall = true;
+			if (!e.targetCollider.CompareTag ("Art"))
+			{
+				artTargetPos = e.hitPoint;
+				artTargetRot = e.target.localRotation;
+				hittingWall = true;
+			}
 		}
+
+		if (inStretchMode)
+		{
+			// check if the object is still be lasered
+			if(!m_CurrentInteractible.IsLasering)
+			{
+				//if not, exit stretch mode
+				//ExitStretchMode();
+			}
+			else
+			{
+				if (stretchObj != null)
+					ScaleAroundPoint (stretchObj, e.hitPoint);
+			}
+		}
+
 	}
 
+	// Pointer Out + Trigger Up => for sure Out
 	public void OnPointerOut()
 	{
-		if (currArt)
+		if (inStretchMode)
 		{
-			currArt.GetComponent<Collider>().enabled = true;
+			//Exit Stretch Mode
+		}
+
+		if (grabSomething && currArt)
+		{
+			//currArt.GetComponent<Collider>().enabled = true;
+			laserPointer.OnToArt = true;
+
 			prevArt = currArt;
 			currArt = null;
 			Debug.Log ("pointer left");
@@ -112,7 +197,7 @@ public class SnapArt : MonoBehaviour
 		float distY = currTouchpadAxis.y - pastTouchpadAxis.y;
 		float absDistY = Mathf.Abs (distY);
 
-		if(absDistY > 0.02f)
+		if(absDistY > 0.01f)
 		{
 			if (distY > 0) {
 				// go up
@@ -144,7 +229,7 @@ public class SnapArt : MonoBehaviour
 
 	void Update()
 	{
-		if (currArt)
+		if (grabSomething && currArt)
 		{
 			if(hittingWall)
 				artTargetPos = ((artTargetPos - transform.position) * posPercentage) + transform.position;
@@ -152,10 +237,27 @@ public class SnapArt : MonoBehaviour
 			currArt.transform.position = Vector3.Lerp(currArt.transform.position, artTargetPos, 0.1f);
 			currArt.transform.rotation = Quaternion.Slerp(currArt.transform.rotation, artTargetRot, 0.1f);
 		}
+
+		// reset, for OnPointerOn to set true
 		hittingWall = false;
 	}
 
-	//=====================================================================
+	private void ScaleAroundPoint(GameObject target, Vector3 laserHit)
+	{
+		// compare current distance of two laser points, with the start distance, to stretch the object
+		var pivot = target.transform.position;
+		var mag = (laserHit - pivot).sqrMagnitude - initialControllersDistance;			
+		var endScale = target.transform.localScale * (1f + mag*0.1f);
+
+		// diff from obj pivot to desired pivot
+		var diffP = target.transform.position - pivot;
+		var finalPos = (diffP * (1f + mag*0.1f)) + pivot;
+
+		target.transform.localScale = endScale;
+		target.transform.position = finalPos;
+	}
+
+	//--------------------------------------------------------------
 	private bool IfMightInBetween(float input)
 	{
 		return (input < 0.5f) || (input > -0.5f);
