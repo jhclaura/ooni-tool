@@ -21,11 +21,13 @@ public class SnapArt : MonoBehaviour
 
 	// Grab n Stretch
 	private VRInteractiveObject m_CurrentInteractible;
-	private GameObject grabbedObj;
 	private GameObject stretchObj;
 	private bool grabSomething = false;
 	private bool inStretchMode = false;
-	private float initialControllersDistance;
+
+	private float currLasersDistance;
+	private float prevLasersDistance;
+
 	private Vector3 originalScale;
 	private Vector3 m_TriggerClickPosition;
 	private Vector3 m_TriggerDownPosition;
@@ -60,6 +62,7 @@ public class SnapArt : MonoBehaviour
 		laserPointer.PadUp -= OnPadUp;
 	}
 
+	// -------------------- Laser Pointer Callback --------------------
 	public void OnPointerIn(object sender, OoniPointerEventArgs e)
 	{
 		// prepare to grab
@@ -71,7 +74,8 @@ public class SnapArt : MonoBehaviour
 		// ignore if already stretching something
 		if (inStretchMode)
 			return;
-		
+
+		// if it's Art
 		if (e.targetCollider.CompareTag ("Art"))
 		{
 			if (currArt == null)
@@ -79,20 +83,21 @@ public class SnapArt : MonoBehaviour
 				GameObject c_art = e.targetCollider.gameObject;
 				m_CurrentInteractible = c_art.GetComponent<VRInteractiveObject> ();
 
-				// if already been lasering
+				// if this Art is already being lasered
 				if(m_CurrentInteractible.IsLasering)
 				{
-					// enter stretch mode!
+					// Stretch mode!
 					inStretchMode = true;
 					stretchObj = c_art;
 					originalScale = stretchObj.transform.localScale;
 
-					initialControllersDistance = (e.hitPoint - e.target.position).sqrMagnitude;
-					Debug.Log ("pointer onto art & stretch!");
+					// distance between two lasers: 1.targetPos, 2.hitpoint
+					currLasersDistance = prevLasersDistance = (e.hitPoint - e.target.position).sqrMagnitude;
+					//Debug.Log ("pointer onto art & stretch start!");
 				}
 				else
 				{
-					// be grabbed!
+					// Grab mode!
 					m_CurrentInteractible.LaserDown(laserPointer);
 
 					// Let laser shoot through Art
@@ -107,7 +112,7 @@ public class SnapArt : MonoBehaviour
 						posPercentage = 1f;
 
 					grabSomething = true;
-					Debug.Log ("pointer onto art & grab!");
+					//Debug.Log ("pointer onto art & grab start!");
 				}
 
 				laserPointer.DeviceVibrate ();
@@ -134,36 +139,45 @@ public class SnapArt : MonoBehaviour
 			if(!m_CurrentInteractible.IsLasering)
 			{
 				//if not, exit stretch mode
-				//ExitStretchMode();
+				inStretchMode = false;
+				stretchObj = null;
 			}
 			else
 			{
-				if (stretchObj != null)
-					ScaleAroundPoint (stretchObj, e.hitPoint);
+				//stretchObj != null
+				if (e.targetCollider.gameObject==stretchObj)
+					ScaleAroundPoint (e.target, e.hitPoint);
 			}
 		}
-
 	}
 
-	// Pointer Out + Trigger Up => for sure Out
+	// Pointer Out + Trigger Up => hard Out
 	public void OnPointerOut()
 	{
 		if (inStretchMode)
 		{
 			//Exit Stretch Mode
+			inStretchMode = false;
+			stretchObj = null;
 		}
 
 		if (grabSomething && currArt)
 		{
+			//Exit Grab Mode
+
 			//currArt.GetComponent<Collider>().enabled = true;
-			laserPointer.OnToArt = true;
+			laserPointer.OnToArt = false;
 
 			prevArt = currArt;
 			currArt = null;
-			Debug.Log ("pointer left");
+			grabSomething = false;
+			m_CurrentInteractible.LaserUp(laserPointer);
+			//Debug.Log ("pointer left");
 		}
+		m_CurrentInteractible = null;
 	}
 
+	// -------------------------- Touch Pad Callback ---------------------------------
 	public void OnPadDown(Vector2 touchAxis)
 	{
 		currTouchpadAxis = pastTouchpadAxis = touchAxis;
@@ -191,27 +205,28 @@ public class SnapArt : MonoBehaviour
 
 		//currTouchpadAxis = touchAxis;
 
+		// If grabbing something, change the distance of the Art
 		if (currArt==null)
 			return;
 		
 		float distY = currTouchpadAxis.y - pastTouchpadAxis.y;
 		float absDistY = Mathf.Abs (distY);
 
-		if(absDistY > 0.01f)
+		if(absDistY > 0.1f)
 		{
 			if (distY > 0) {
 				// go up
 				if (posPercentage <= 0.9f)
 				{
 					posPercentage += 0.1f;
-					Debug.Log ("go up");
+					//Debug.Log ("go up");
 				}
 			} else {
 				// go down
 				if (posPercentage >= 0.2f)
 				{
 					posPercentage -= 0.1f;
-					Debug.Log ("go down");
+					//Debug.Log ("go down");
 				}
 			}
 			currTouchpadAxis = pastTouchpadAxis = touchAxis;
@@ -242,19 +257,27 @@ public class SnapArt : MonoBehaviour
 		hittingWall = false;
 	}
 
-	private void ScaleAroundPoint(GameObject target, Vector3 laserHit)
+	//--------------------------------------------------------------
+
+	private void ScaleAroundPoint(Transform target, Vector3 laserHit)
 	{
 		// compare current distance of two laser points, with the start distance, to stretch the object
-		var pivot = target.transform.position;
-		var mag = (laserHit - pivot).sqrMagnitude - initialControllersDistance;			
-		var endScale = target.transform.localScale * (1f + mag*0.1f);
+		var pivot = target.position;
 
-		// diff from obj pivot to desired pivot
-		var diffP = target.transform.position - pivot;
-		var finalPos = (diffP * (1f + mag*0.1f)) + pivot;
+		currLasersDistance = (laserHit - pivot).sqrMagnitude;
 
-		target.transform.localScale = endScale;
-		target.transform.position = finalPos;
+		var mag = currLasersDistance - prevLasersDistance;
+
+		var endScale = target.localScale + Vector3.one*mag*0.1f;
+
+		// diff from obj pivot to desired pivot => not applicable here cuz pivot = pos
+//		var diffP = target.transform.position - pivot;
+//		var finalPos = (diffP * (1f + mag*0.01f)) + pivot;
+
+		target.localScale = endScale;
+		//target.transform.position = finalPos;
+
+		prevLasersDistance = currLasersDistance;
 	}
 
 	//--------------------------------------------------------------

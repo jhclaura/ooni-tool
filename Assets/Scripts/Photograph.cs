@@ -19,7 +19,7 @@ public class Photograph : MonoBehaviour {
     // Update is called once per frame
     void OnEnable()
     {
-        material = null;
+		//material = null;
     }
 
     void Update() {

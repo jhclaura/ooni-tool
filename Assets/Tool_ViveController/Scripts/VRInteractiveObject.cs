@@ -19,8 +19,8 @@ public class VRInteractiveObject : MonoBehaviour {
 	public event Action<GameObject> OnTouch;
 	public event Action<GameObject> OnPadDown;
 	// Laser
-	public event Action OnLaserDown;
-	public event Action OnLaserUp;
+	public event Action<Ooni_LaserPointer> OnLaserDown;
+	public event Action<Ooni_LaserPointer> OnLaserUp;
 
 	public bool usePhysics = false;
 	//public GameObject scaleTarget;

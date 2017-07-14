@@ -49,6 +49,13 @@ public class Ooni_LaserPointer : MonoBehaviour
 		set { m_onToArt = value; }
 	}
 
+	private bool m_isTeleporting;
+	public bool LaserTeleporting
+	{
+		get { return m_isTeleporting; }
+		set { m_isTeleporting = value; }
+	}
+
 	public SteamVR_Controller.Device Device
 	{
 		get { return SteamVR_Controller.Input ((int)controller.controllerIndex); }
@@ -145,6 +152,9 @@ public class Ooni_LaserPointer : MonoBehaviour
 	{
 		if (!isActive)
 			return;
+
+		if (m_isTeleporting)
+			return;
 		
 		float dist = 100f;
 
@@ -165,7 +175,8 @@ public class Ooni_LaserPointer : MonoBehaviour
 			args.distance = 0f;
 			args.flags = 0;
 			args.target = previousContact;
-			args.targetCollider = hit.collider;
+			args.targetCollider = previousContact.GetComponent<Collider>();
+			args.hitPoint = hit.point;
 			OnPointerOut(args);
 
 			// update
@@ -180,6 +191,7 @@ public class Ooni_LaserPointer : MonoBehaviour
 			argsIn.distance = hit.distance;
 			argsIn.flags = 0;
 			argsIn.target = hit.transform;
+			argsIn.hitPoint = hit.point;
 			argsIn.targetCollider = hit.collider;
 			OnPointerIn(argsIn);
 
@@ -229,6 +241,9 @@ public class Ooni_LaserPointer : MonoBehaviour
 
 	public void HandleTriggerDown(object sender, ClickedEventArgs e)
 	{
+		if (m_isTeleporting)
+			return;
+
 		isActive = true;
 		holder.SetActive(true);
 
@@ -239,12 +254,21 @@ public class Ooni_LaserPointer : MonoBehaviour
 
 	public void HandleTriggerTouch(object sender, ClickedEventArgs e)
 	{
+		if (m_isTeleporting)
+			return;
+		
 		if (PadTouching != null)
 			PadTouching ( GetTouchpadAxis() );
 	}
 
 	public void HandleTriggerUp(object sender, ClickedEventArgs e)
 	{
+		if (m_isTeleporting)
+			return;
+		
+		if (PadUp != null)
+			PadUp ( GetTouchpadAxis() );
+		
 		// reset
 		if(previousContact)
 		{
@@ -253,6 +277,8 @@ public class Ooni_LaserPointer : MonoBehaviour
 			args.distance = 0f;
 			args.flags = 0;
 			args.target = previousContact;
+			args.targetCollider = previousContact.GetComponent<Collider>();
+
 			OnPointerOut(args);
 
 			// update
@@ -263,9 +289,6 @@ public class Ooni_LaserPointer : MonoBehaviour
 
 		isActive = false;
 		holder.SetActive(false);
-
-		if (PadUp != null)
-			PadUp ( GetTouchpadAxis() );
 	}
 
 	//===========================================================================
